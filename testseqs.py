@@ -15,10 +15,23 @@ def getSeqs(errorprob, gapprob, length, numseqs, source=aas):
           print ">sequence_"+string.join([random.choice(["A","B","C","D","E","F","G","H","I"]) for p in range(8)],"")
           print i
 
+def cry():
+	print "Invalid input: Please use format\n\n\t\t\ttestseqs p_err p_gap len numseqs\n\n\t\twhere\n\
+									\n\t\t\tp_err   -- is the error probability \
+									\n\t\t\tp_gap   -- is the probability that a given error is a gap \
+									\n\t\t\tlength  -- is the length of the alignment\
+									\n\t\t\tnumseqs -- is the number of sequences\n"
+	sys.exit()
+
 args = sys.argv[1:]
-errorprob = float(args[0])
-gapprob = float(args[1])
-length = int(args[2])
-numseqs = int(args[3])
+try:
+	errorprob = float(args[0])
+	gapprob = float(args[1])
+	length = int(args[2])
+	numseqs = int(args[3])
+except:
+	cry()
+
+if not (0 <= errorprob <= 1 and 0 <= gapprob <= 1 and length > 0 and numseqs > 0): cry()
 
 getSeqs(errorprob, gapprob, length, numseqs, source=aas)
