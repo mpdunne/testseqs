@@ -13,7 +13,7 @@
 ####################################
 
 errors   = []
-libnames = ["random", "sys", "string", "argparse", "math", "csv"]
+libnames = ["random", "re", "sys", "string", "argparse", "math", "csv", "copy"]
 
 for libname in libnames:
     try:
@@ -33,7 +33,6 @@ try:
 except ImportError as e:
 	errors.append(e)
 
-
 try:
 	from collections import Counter
 except ImportError as e:
@@ -44,9 +43,14 @@ try:
 except ImportError as e:
 	errors.append(e)
 
+try:
+	import numpy as np
+except ImportError as e:
+	errors.append(e)
+
 if errors:
-	print("Missing modules :(\nThe following module errors need to be resolved before running Testseqs:")
-	for error in errors: print("-- " + str(error))
+	errmsg = "Missing modules :(\nThe following module errors need to be resolved before running Testseqs:"
+	for error in errors: errmsg+="\n-- " + str(error)
 	sys.exit()
 
 ###################################
@@ -84,6 +88,140 @@ def getSeqs(ranseq, errorprob, gapprob, numseqs, weights, includestop, startaa, 
 		print ">sequence_" + str(i).zfill(q)
 		print s
 	sys.exit()
+
+def get_duptree(t, dupprob):
+	dup_lambda = (dupprob)/(1-dupprob)
+	# Traverse the tree. For each branch, if a duplication event has occurred,
+	# remove that branch and add two new ones at an appropriate distance. Then
+	# add the new branches to the working pile.
+	root = t.get_tree_root()
+	working = [root]
+	while True:
+		nworking = []
+		for node in working:
+			children = node.get_children()
+			if not children:
+				continue
+			# Get the expected position of the first duplication event...
+			for c in children:
+				x = np.random.exponential(1/dup_lambda)
+				if x >= c.dist:
+					nworking.append(c)
+				else:
+					# (The tricky bit)
+					# The splitting point is x.
+					# At X, two copies of the c subtree should be formed,
+					# at distance c.dist - X.
+					L = c.dist
+					u = c.detach()
+					v = u.copy()
+					z = node.add_child(dist = x)
+					z.add_child(u, dist=L-x)
+					z.add_child(v, dist=L-x)
+					nworking.append(z)
+		if not nworking: break
+		working = nworking
+	return t
+
+def get_deltree(t, delprob):
+	del_lambda = (delprob)/(1-delprob)
+	# Traverse the tree. For each branch, if a duplication event has occurred,
+	# remove that branch and add two new ones at an appropriate distance. Then
+	# add the new branches to the working pile.
+	root = t.get_tree_root()
+	working = [root]
+	leaves = [getId(l) for l in t.get_leaves()]
+	while True:
+		nworking = []
+		for node in working:
+			children = node.get_children()
+			if not children:
+				continue
+			# Get the expected position of the first duplication event...
+			for c in children:
+				x = np.random.exponential(1/del_lambda)
+			#	print x, c.dist
+				if x >= c.dist:
+					nworking.append(c)
+				else:
+					# If a deletion occurs, just don't add the descendants.
+					c.detach()
+		if not nworking: break
+		working = nworking
+	# Delete any stumps
+	while True:
+		kl = [k for k in t.get_leaves() if not getId(k) in leaves]
+		if not kl: break
+		for l in kl: l.detach()	
+	return t
+
+
+def getId(node):
+	return re.sub(r".* \(([0-9a-z]+)\)", r"\1", repr(node))
+
+def mutate_poisson(s, p_e, p_g, d, weights):
+	# For each position in the sequence, mutate with frequencies given by p_e and p_g.
+	t = ""; threshold = math.exp(-d*(p_e)/(1-p_e))
+	for i in s:
+		r = random.random()
+		if r < threshold:
+			t += i
+		else:
+			r = random.random()
+			if r < p_e:
+				t += "-"
+			else:
+				t += wchoice(weights)
+	return t
+
+def getSeqsT(ranseq, errorprob, gapprob, numseqs, weights, includestop, startaa, t, dupprob, delprob, source=aas):
+	# We create a series of two new trees.
+	# Firstly, allow gene duplication events to happen.
+	# Secondly, allow gene loss events to happen.
+	if dupprob > 0:
+		t = get_duptree(t, dupprob)
+	if delprob > 0:
+		t = get_deltree(t, delprob)
+	# We can then freely mutate the constituent sequences of the result.
+	# Easy peasy lemon squeezy.
+	# The root sequence is the one provided by ranseq. Traverse the tree
+	# and store all the resultant sequences according to their node IDs.
+	root    = t.get_tree_root()
+	seqs    = {getId(root): ranseq}
+	leaves  = {}
+	working = [root]
+	while True:
+		nworking = []
+		for node in working:
+			nid = getId(node)
+		#	print nid
+			seq = seqs[nid]
+		#	print seq
+			children = node.get_children()
+			if not children:
+				leaves[nid] = node
+				continue
+			# Fetch the parent node's sequence and mutate it
+			for c in children:
+				s = mutate_poisson(seq, errorprob, gapprob, c.dist, weights)
+				if includestop: s = s[:-1] + "*"
+				if startaa: s = startaa + s[1:]
+				seqs[getId(c)] = s
+				nworking.append(c)
+		if not nworking: break
+		working = nworking
+	# Clean up
+	leafnames = [leaves[l].name for l in leaves]
+	duplicates = set([x for x in leafnames if leafnames.count(x) > 1])
+	for l in leaves:
+		n = leaves[l].name
+		if n in duplicates:
+			nn = n + "_" + str(leafnames.count(n) - 1)
+			leafnames.remove(n)
+		else:
+			nn = n
+		print ">"+nn
+		print seqs[l]
 
 def getFWeights(p_fa, aas):
 	try:
@@ -137,7 +275,7 @@ def getTree(p_t):
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description="Run TestSeqs")
 	parser.add_argument("-g", "--gapprob", metavar="gapprob", dest="GP")
-	parser.add_argument("-g", "--gapprob", metavar="gapprob", dest="GP")
+	#parser.add_argument("-h", "--insertionprob", metavar="insertionprob", dest="IP")
 	parser.add_argument("-e", "--errorprob", metavar="errorprob", dest="EP")
 	parser.add_argument("-l", "--length", metavar="length", dest="LN")
 	parser.add_argument("-n", "--numseqs", metavar="numseqs", dest="NS")
@@ -146,10 +284,10 @@ if __name__ == '__main__':
 	#parser.add_argument("-d", "--dna", action="store_true", dest="DNA")
 	#parser.add_argument("-p", "--protein", action="store_true", dest="PROT")
 	parser.add_argument("-i", "--initial", metavar="initial", dest="IN")
-	#parser.add_argument("-t", "--tree", metavar="tree", dest="TREE")
+	parser.add_argument("-t", "--tree", metavar="tree", dest="TREE")
 	parser.add_argument("-f", "--fasta", metavar="fasta", dest="FA")
-	#parser.add_argument("-z", "--lossprob", metavar="loss", dest="GL")
-	#parser.add_argument("-y", "--dupprob", metavar="dup", dest="GD")
+	parser.add_argument("-z", "--lossprob", metavar="loss", dest="GL")
+	parser.add_argument("-y", "--dupprob", metavar="dup", dest="GD")
 	parser.add_argument("-x", "--includestop", metavar="includestop", dest="IS")
 	parser.add_argument("-m", "--metstart", metavar="metstart", dest="MS")
 	parser.add_argument("-c", "--altstart", metavar="altstart", dest="AS")
@@ -193,4 +331,14 @@ if __name__ == '__main__':
 	except:
 		cry()
 	if not (0 <= errorprob <= 1 and 0 <= gapprob <= 1 and length > 0 and numseqs > 0): cry()
-	getSeqs(initial, errorprob, gapprob, numseqs, weights, includestop, startaa, source=aas)
+	# Check for tree
+	tree = getTree(args.TREE)
+	# There are some tree-specific arguments.
+	if (args.GD or args.GL) and not tree:
+		sys.exit("Error: -y and -z options can only be used with -t option!")
+	dupprob = float(args.GD) if args.GD else 0
+	delprob = float(args.GL) if args.GL else 0
+	if not tree:
+		getSeqs(initial, errorprob, gapprob, numseqs, weights, includestop, startaa, source=aas)
+	else:
+		getSeqsT(initial, errorprob, gapprob, numseqs, weights, includestop, startaa, tree, dupprob, delprob, source=aas)
