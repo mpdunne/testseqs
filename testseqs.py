@@ -338,6 +338,10 @@ if __name__ == '__main__':
 		sys.exit("Error: -y and -z options can only be used with -t option!")
 	dupprob = float(args.GD) if args.GD else 0
 	delprob = float(args.GL) if args.GL else 0
+	if delprob < 0 or delprob >=1:
+		sys.exit("Error: Gene loss parameter -z must be in the interval [0,1)")
+	if dupprob < 0 or dupprob >=1:
+		sys.exit("Error: Gene duplication parameter -y must be in the interval [0,1)")
 	if not tree:
 		getSeqs(initial, errorprob, gapprob, numseqs, weights, includestop, startaa, source=aas)
 	else:
