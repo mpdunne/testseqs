@@ -3,9 +3,7 @@
 What does TestSeqs do?
 ======================
 
-TestSeqs generates simple random sets of amino acid sequences. It is also able to generate sequence variants under simple (but not necessarily biologicall accurate) rules.
-
-It is designed to provide test alignments for whatever purpose.
+TestSeqs generates simple random sets of amino acid sequences, providing all-purpose simulated gene families.
 
 https://github.com/mpdunne/testseqs
 
