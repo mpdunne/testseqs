@@ -10,7 +10,7 @@ https://github.com/mpdunne/testseqs
 Usage
 =====
 
-TestSeqs is written in python, and requires no installation (though you may wish to put the download directory in your bash $PATH). To run TestSeqs with no options whatsoever, simply type ```testseqs```. This will give 10 random amino acid sequences, each derived from an initial sequence of length 40.
+TestSeqs is written in python, and requires no installation (though you may wish to put the download directory in your bash ```$PATH```). To run TestSeqs with no options whatsoever, simply type ```testseqs```. This will give 5 random amino acid sequences, each derived from an initial sequence of length 40.
 
 Sequence options
 ================
