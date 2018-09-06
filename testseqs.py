@@ -303,6 +303,7 @@ if __name__ == '__main__':
 	# Process initial mode
 	if args.IN != None:
 		initial = args.IN
+		length = len(args.IN)
 		if args.LN != None: sys.exit("Error: -i and -l arguments cannot be used together")
 	else:
 		try:

@@ -17,7 +17,7 @@ Sequence options
 
 Each sequence outputted by TestSeqs is derived from an initial sequence, and subsequently mutated according to user preference. Mutations occur at a rate given by the ```-e``` or ```--errorprob``` option, the default value for which is ```0.1```. If a mutation occurs, it is a gap with probability given by ```-g``` or ```--gapprob```, the default value for which is ```0.2```. Increasing either of these values will decrease the similarity between the outputted sequences.
 
-You can change the length of the randomised initial sequence using the ```-l``` or ```--length``` options (default is ```40```), and you can change the number of outputted sequences using ```-n``` or ```--numseqs``` (default is ```10```). Alternatively you can specify your own initial sequence using ```-i``` or ```--initial```.
+You can change the length of the randomised initial sequence using the ```-l``` or ```--length``` options (default is ```40```), and you can change the number of outputted sequences using ```-n``` or ```--numseqs``` (default is ```10```). Alternatively you can specify your own initial sequence using ```-i``` or ```--initial```, inputted as a string on the command line, for example ```python testseqs -i "MASADLKNWAE*"```.
 
 If you have a specific set of amino acids you wish the sequences to be drawn from, you may use the ```-a``` or ```--aas``` option. For example, ```testseqs --aas "AGHMLPQWR"```.
 
